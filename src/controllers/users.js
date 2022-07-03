@@ -65,7 +65,7 @@ const updateUser = async (req, res) => {
       { new: true, runValidators: true },
     );
 
-    return res.status(200).send(user);
+    return res.send({ data: user });
   } catch (error) {
     if (error.name === 'ValidationError') {
       return res.status(400).send({ message: error.message });
@@ -82,10 +82,10 @@ const updateAvatar = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.user._id,
       { avatar },
-      { new: true },
+      { new: true, runValidators: true },
     );
 
-    return res.send(user);
+    return res.send({ data: user });
   } catch (error) {
     if (error.name === 'ValidationError') {
       return res.status(400).send({ message: error.message });
