@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 
+const ApiError = require('../utils/ApiError');
 const User = require('../models/user');
 
 const prepareUserResponse = (user) => ({
@@ -24,18 +25,22 @@ const getUser = async (req, res) => {
     const { userId } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res
-        .status(400)
-        .send({ message: 'Неверный формат id пользователя' });
+      throw new ApiError({ statusCode: 400, message: 'Неверный формат id пользователя' });
     }
 
     const user = await User.findById(userId).orFail(
-      () => new Error(`Пользователь с таким _id ${userId} не найден`),
+      () => new ApiError({ statusCode: 404, message: `Пользователь с таким _id ${userId} не найден` }),
     );
 
     return res.send(prepareUserResponse(user));
   } catch (error) {
-    return res.status(404).send({ message: error.message });
+    if (error instanceof ApiError) {
+      const { statusCode, message } = error;
+
+      return res.status(statusCode).send({ message });
+    }
+
+    return res.status(500).send({ message: error.message });
   }
 };
 
