@@ -111,7 +111,7 @@ const likeCard = async (req, res) => {
       cardId,
       { $addToSet: { likes: req.user._id } },
       { new: true },
-    ).orFail(() => new ApiError({ statuCode: 404, message: `Карточка с _id ${cardId} не найдена` }));
+    ).orFail(() => new ApiError({ statusCode: 404, message: `Карточка с _id ${cardId} не найдена` }));
 
     return res.send({
       data: prepareCardResponse(card),
