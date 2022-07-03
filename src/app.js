@@ -31,4 +31,8 @@ app.use((req, _, next) => {
 app.use('/users', userRoutes);
 app.use('/cards', cardRoutes);
 
+app.use('*', (_, res) => {
+  res.status(404).json({ message: 'Запрашиваемый ресурс не найден' });
+});
+
 app.listen(3000);
