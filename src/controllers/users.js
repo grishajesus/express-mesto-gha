@@ -65,7 +65,7 @@ const updateUser = async (req, res) => {
       { new: true, runValidators: true },
     );
 
-    return res.status(200).send(prepareUserResponse(user));
+    return res.status(200).send(user);
   } catch (error) {
     if (error.name === 'ValidationError') {
       return res.status(400).send({ message: error.message });
@@ -85,7 +85,7 @@ const updateAvatar = async (req, res) => {
       { new: true },
     );
 
-    return res.send(prepareUserResponse(user));
+    return res.send(user);
   } catch (error) {
     if (error.name === 'ValidationError') {
       return res.status(400).send({ message: error.message });
