@@ -1,4 +1,6 @@
+const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
 
 const ApiError = require('../utils/ApiError');
 const User = require('../models/user');
@@ -10,17 +12,17 @@ const prepareUserResponse = (user) => ({
   avatar: user.avatar,
 });
 
-const getUsers = async (_, res) => {
+const getUsers = async (_, res, next) => {
   try {
     const users = await User.find({});
 
     return res.send({ data: users });
   } catch (error) {
-    return res.status(500).send({ message: error.message });
+    return next(error);
   }
 };
 
-const getUser = async (req, res) => {
+const getUser = async (req, res, next) => {
   try {
     const { userId } = req.params;
 
@@ -34,33 +36,35 @@ const getUser = async (req, res) => {
 
     return res.send(prepareUserResponse(user));
   } catch (error) {
-    if (error instanceof ApiError) {
-      const { statusCode, message } = error;
-
-      return res.status(statusCode).send({ message });
-    }
-
-    return res.status(500).send({ message: error.message });
+    return next(error);
   }
 };
 
-const createUser = async (req, res) => {
+const createUser = async (req, res, next) => {
   try {
-    const { name, about, avatar } = req.body;
+    const {
+      name, about, avatar, email, password,
+    } = req.body;
 
-    const user = await User.create({ name, about, avatar });
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const user = await User.create({
+      name, about, avatar, email, password: passwordHash,
+    });
 
     return res.send(prepareUserResponse(user));
   } catch (error) {
     if (error.name === 'ValidationError') {
-      return res.status(400).send({ message: error.message });
+      return next(new ApiError({ statusCode: 400, message: error.message }));
+    } if (error.code === 11000) {
+      return next(new ApiError({ statusCode: 409, message: error.message }));
     }
 
-    return res.status(500).send({ message: error.message });
+    return next(error);
   }
 };
 
-const updateUser = async (req, res) => {
+const updateUser = async (req, res, next) => {
   try {
     const { name, about } = req.body;
 
@@ -73,14 +77,14 @@ const updateUser = async (req, res) => {
     return res.send(user);
   } catch (error) {
     if (error.name === 'ValidationError') {
-      return res.status(400).send({ message: error.message });
+      return next(new ApiError({ statusCode: 400, message: error.message }));
     }
 
-    return res.status(500).send({ message: error.message });
+    return next(error);
   }
 };
 
-const updateAvatar = async (req, res) => {
+const updateAvatar = async (req, res, next) => {
   try {
     const { avatar } = req.body;
 
@@ -93,10 +97,40 @@ const updateAvatar = async (req, res) => {
     return res.send(user);
   } catch (error) {
     if (error.name === 'ValidationError') {
-      return res.status(400).send({ message: error.message });
+      return next(new ApiError({ statusCode: 400, message: error.message }));
     }
 
-    return res.status(500).send({ message: error.message });
+    return next(error);
+  }
+};
+
+const login = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await User.findUserByCredentials(email, password);
+
+    const token = jwt.sign({ _id: user._id }, 'smth-secret-key', { expiresIn: '7d' });
+
+    res.cookie('authToken', token, { maxAge: 3600 * 24 * 7, httpOnly: true });
+
+    return res.send({ token });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const getCurrentUser = async (req, res, next) => {
+  try {
+    const { _id } = req.user;
+
+    const user = await User.findById(_id).orFail(
+      () => new ApiError({ statusCode: 404, message: `Пользователь с таким _id ${_id} не найден` }),
+    );
+
+    return res.send(prepareUserResponse(user));
+  } catch (error) {
+    return next(error);
   }
 };
 
@@ -106,4 +140,6 @@ module.exports = {
   createUser,
   updateUser,
   updateAvatar,
+  login,
+  getCurrentUser,
 };

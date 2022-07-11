@@ -12,7 +12,7 @@ const prepareCardResponse = (card) => ({
   createdAt: card.createdAt,
 });
 
-const getCards = async (_, res) => {
+const getCards = async (_, res, next) => {
   try {
     const cards = await Card.find({});
 
@@ -20,11 +20,11 @@ const getCards = async (_, res) => {
 
     return res.send(preparedCards);
   } catch (error) {
-    return res.status(500).send({ error: error.message });
+    return next(error);
   }
 };
 
-const getCard = async (req, res) => {
+const getCard = async (req, res, next) => {
   try {
     const { cardId } = req.params;
 
@@ -38,17 +38,11 @@ const getCard = async (req, res) => {
 
     return res.send(prepareCardResponse(card));
   } catch (error) {
-    if (error instanceof ApiError) {
-      const { statusCode, message } = error;
-
-      return res.status(statusCode).send({ message });
-    }
-
-    return res.status(500).send({ message: error.message });
+    return next(error);
   }
 };
 
-const createCard = async (req, res) => {
+const createCard = async (req, res, next) => {
   try {
     const { name, link } = req.body;
 
@@ -57,14 +51,14 @@ const createCard = async (req, res) => {
     return res.send(prepareCardResponse(card));
   } catch (error) {
     if (error.name === 'ValidationError') {
-      return res.status(400).send({ message: error.message });
+      return next(new ApiError({ statusCode: 400, message: error.message }));
     }
 
-    return res.status(500).send({ message: error.message });
+    return next(error);
   }
 };
 
-const deleteCard = async (req, res) => {
+const deleteCard = async (req, res, next) => {
   try {
     const { cardId } = req.params;
 
@@ -89,17 +83,11 @@ const deleteCard = async (req, res) => {
       message: 'Карточка успешно удалена',
     });
   } catch (error) {
-    if (error instanceof ApiError) {
-      const { statusCode, message } = error;
-
-      return res.status(statusCode).send({ message });
-    }
-
-    return res.status(500).send({ message: error.message });
+    return next(error);
   }
 };
 
-const likeCard = async (req, res) => {
+const likeCard = async (req, res, next) => {
   try {
     const { cardId } = req.params;
 
@@ -118,17 +106,11 @@ const likeCard = async (req, res) => {
       message: 'Лайк успешно поставлен',
     });
   } catch (error) {
-    if (error instanceof ApiError) {
-      const { statusCode, message } = error;
-
-      return res.status(statusCode).send({ message });
-    }
-
-    return res.status(500).send({ message: error.message });
+    return next(error);
   }
 };
 
-const unlikeCard = async (req, res) => {
+const unlikeCard = async (req, res, next) => {
   try {
     const { cardId } = req.params;
 
@@ -147,13 +129,7 @@ const unlikeCard = async (req, res) => {
       message: 'Лайк успешно удален',
     });
   } catch (error) {
-    if (error instanceof ApiError) {
-      const { statusCode, message } = error;
-
-      return res.status(statusCode).send({ message });
-    }
-
-    return res.status(500).send({ message: error.message });
+    return next(error);
   }
 };
 

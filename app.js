@@ -2,9 +2,18 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
+const { errors } = require('celebrate');
 
+const ApiError = require('./utils/ApiError');
 const userRoutes = require('./routes/users');
 const cardRoutes = require('./routes/cards');
+const {
+  createUser,
+  login,
+} = require('./controllers/users');
+const authMiddleware = require('./middlewares/auth');
+const errorMiddleware = require('./middlewares/error');
+const { validateCreateUser, validateLogin } = require('./middlewares/validators');
 
 const app = express();
 
@@ -20,19 +29,18 @@ mongoose
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-app.use((req, _, next) => {
-  req.user = {
-    _id: '62c18b11f92ddc25333e121d',
-  };
+app.post('/signin', validateLogin, login);
+app.post('/signup', validateCreateUser, createUser);
 
-  next();
-});
-
+app.use(authMiddleware);
 app.use('/users', userRoutes);
 app.use('/cards', cardRoutes);
 
-app.use('*', (_, res) => {
-  res.status(404).json({ message: 'Запрашиваемый ресурс не найден' });
+app.use('*', (_, __, next) => {
+  next(new ApiError({ statusCode: 404, message: 'Запрашиваемый ресурс не найден' }));
 });
+
+app.use(errors());
+app.use(errorMiddleware);
 
 app.listen(3000);
