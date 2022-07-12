@@ -125,7 +125,7 @@ const getCurrentUser = async (req, res, next) => {
       () => new NotFoundError(`Пользователь с таким _id ${_id} не найден`),
     );
 
-    return res.send(prepareUserResponse(user));
+    return res.send(user);
   } catch (error) {
     return next(error);
   }
