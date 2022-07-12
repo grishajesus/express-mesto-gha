@@ -1,7 +1,7 @@
 const ApiError = require('../utils/ApiError');
 const { ERROR_CODES } = require('../constants/errors');
 
-module.exports = (error, req, res, next) => {
+module.exports = (error, _req, res, _next) => {
   if (error instanceof ApiError) {
     const { statusCode, message } = error;
 
