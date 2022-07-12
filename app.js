@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const { errors } = require('celebrate');
 
-const ApiError = require('./utils/ApiError');
+const NotFoundError = require('./utils/NotFoundError');
 const userRoutes = require('./routes/users');
 const cardRoutes = require('./routes/cards');
 const {
@@ -37,7 +37,7 @@ app.use('/users', userRoutes);
 app.use('/cards', cardRoutes);
 
 app.use('*', (_, __, next) => {
-  next(new ApiError({ statusCode: 404, message: 'Запрашиваемый ресурс не найден' }));
+  next(new NotFoundError('Запрашиваемый ресурс не найден'));
 });
 
 app.use(errors());

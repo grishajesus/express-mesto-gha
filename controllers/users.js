@@ -1,8 +1,9 @@
 const bcrypt = require('bcryptjs');
-const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 
-const ApiError = require('../utils/ApiError');
+const NotFoundError = require('../utils/NotFoundError');
+const ConflictError = require('../utils/ConflictError');
+const BadRequestError = require('../utils/BadRequestError');
 const User = require('../models/user');
 
 const prepareUserResponse = (user) => ({
@@ -26,12 +27,8 @@ const getUser = async (req, res, next) => {
   try {
     const { userId } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      throw new ApiError({ statusCode: 400, message: 'Неверный формат id пользователя' });
-    }
-
     const user = await User.findById(userId).orFail(
-      () => new ApiError({ statusCode: 404, message: `Пользователь с таким _id ${userId} не найден` }),
+      () => new NotFoundError(`Пользователь с таким _id ${userId} не найден`),
     );
 
     return res.send(prepareUserResponse(user));
@@ -54,10 +51,12 @@ const createUser = async (req, res, next) => {
 
     return res.send(prepareUserResponse(user));
   } catch (error) {
+    if (error.code === 11000) {
+      return next(new ConflictError(error.message));
+    }
+
     if (error.name === 'ValidationError') {
-      return next(new ApiError({ statusCode: 400, message: error.message }));
-    } if (error.code === 11000) {
-      return next(new ApiError({ statusCode: 409, message: error.message }));
+      return next(new BadRequestError(error.message));
     }
 
     return next(error);
@@ -77,7 +76,7 @@ const updateUser = async (req, res, next) => {
     return res.send(user);
   } catch (error) {
     if (error.name === 'ValidationError') {
-      return next(new ApiError({ statusCode: 400, message: error.message }));
+      return next(new BadRequestError(error.message));
     }
 
     return next(error);
@@ -97,7 +96,7 @@ const updateAvatar = async (req, res, next) => {
     return res.send(user);
   } catch (error) {
     if (error.name === 'ValidationError') {
-      return next(new ApiError({ statusCode: 400, message: error.message }));
+      return next(new BadRequestError(error.message));
     }
 
     return next(error);
@@ -112,8 +111,6 @@ const login = async (req, res, next) => {
 
     const token = jwt.sign({ _id: user._id }, 'smth-secret-key', { expiresIn: '7d' });
 
-    res.cookie('authToken', token, { maxAge: 3600 * 24 * 7, httpOnly: true });
-
     return res.send({ token });
   } catch (error) {
     return next(error);
@@ -125,7 +122,7 @@ const getCurrentUser = async (req, res, next) => {
     const { _id } = req.user;
 
     const user = await User.findById(_id).orFail(
-      () => new ApiError({ statusCode: 404, message: `Пользователь с таким _id ${_id} не найден` }),
+      () => new NotFoundError(`Пользователь с таким _id ${_id} не найден`),
     );
 
     return res.send(prepareUserResponse(user));

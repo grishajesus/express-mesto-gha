@@ -1,12 +1,12 @@
 const jwt = require('jsonwebtoken');
 
-module.exports = (req, res, next) => {
+const UnauthorizedError = require('../utils/UnauthorizedError');
+
+module.exports = (req, _, next) => {
   const { authorization } = req.headers;
 
   if (!authorization || !authorization.startsWith('Bearer ')) {
-    return res
-      .status(401)
-      .send({ message: 'Необходима авторизация' });
+    return next(new UnauthorizedError('Необходима авторизация'));
   }
 
   const token = authorization.replace('Bearer ', '');
@@ -16,9 +16,7 @@ module.exports = (req, res, next) => {
   try {
     payload = jwt.verify(token, 'smth-secret-key');
   } catch (err) {
-    return res
-      .status(401)
-      .send({ message: 'Необходима авторизация' });
+    return next(new UnauthorizedError('Необходима авторизация'));
   }
 
   req.user = payload;

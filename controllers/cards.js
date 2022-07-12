@@ -1,6 +1,7 @@
-const mongoose = require('mongoose');
-
-const ApiError = require('../utils/ApiError');
+const BadRequestError = require('../utils/BadRequestError');
+const ForbiddenError = require('../utils/ForbiddenError');
+const NotFoundError = require('../utils/NotFoundError');
+const InternalError = require('../utils/InternalError');
 const Card = require('../models/card');
 
 const prepareCardResponse = (card) => ({
@@ -28,12 +29,8 @@ const getCard = async (req, res, next) => {
   try {
     const { cardId } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(cardId)) {
-      throw new ApiError({ statusCode: 400, message: 'Неверный формат id карточки' });
-    }
-
     const card = await Card.findById(cardId).orFail(
-      () => new ApiError({ statusCode: 404, message: `Карточка с таким _id ${cardId} не найдена` }),
+      () => new NotFoundError(`Карточка с таким _id ${cardId} не найдена`),
     );
 
     return res.send(prepareCardResponse(card));
@@ -51,7 +48,7 @@ const createCard = async (req, res, next) => {
     return res.send(prepareCardResponse(card));
   } catch (error) {
     if (error.name === 'ValidationError') {
-      return next(new ApiError({ statusCode: 400, message: error.message }));
+      return next(new BadRequestError(error.message));
     }
 
     return next(error);
@@ -62,20 +59,16 @@ const deleteCard = async (req, res, next) => {
   try {
     const { cardId } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(cardId)) {
-      throw new ApiError({ statusCode: 400, message: 'Неверный формат id карточки' });
-    }
-
     const card = await Card.findById(cardId).orFail(
-      () => new ApiError({ statusCode: 404, message: `Карточка с _id ${cardId} не найдена` }),
+      () => new NotFoundError(`Карточка с _id ${cardId} не найдена`),
     );
 
     if (card.owner.toString() !== req.user._id) {
-      throw new ApiError({ statusCode: 403, message: 'Вы не можете удалить чужие карточки' });
+      throw new ForbiddenError('Вы не можете удалить чужие карточки');
     }
 
     const deletedCard = await Card.findByIdAndDelete(card._id).orFail(
-      () => new ApiError({ statusCode: 500, message: 'Ошибка при удалении' }),
+      () => new InternalError('Ошибка при удалении'),
     );
 
     return res.send({
@@ -91,15 +84,11 @@ const likeCard = async (req, res, next) => {
   try {
     const { cardId } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(cardId)) {
-      throw new ApiError({ statusCode: 400, message: 'Неверный формат id карточки' });
-    }
-
     const card = await Card.findByIdAndUpdate(
       cardId,
       { $addToSet: { likes: req.user._id } },
       { new: true },
-    ).orFail(() => new ApiError({ statusCode: 404, message: `Карточка с _id ${cardId} не найдена` }));
+    ).orFail(() => new NotFoundError(`Карточка с _id ${cardId} не найдена`));
 
     return res.send({
       data: prepareCardResponse(card),
@@ -114,15 +103,11 @@ const unlikeCard = async (req, res, next) => {
   try {
     const { cardId } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(cardId)) {
-      throw new ApiError({ statusCode: 400, message: 'Неверный формат id карточки' });
-    }
-
     const card = await Card.findByIdAndUpdate(
       cardId,
       { $pull: { likes: req.user._id } },
       { new: true },
-    ).orFail(() => new ApiError({ statusCode: 404, message: `Карточка с _id ${cardId} не найдена` }));
+    ).orFail(() => new NotFoundError(`Карточка с _id ${cardId} не найдена`));
 
     return res.send({
       data: prepareCardResponse(card),
